@@ -234,25 +234,20 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
               child: Padding(
                 padding: const EdgeInsets.all(20),
                 child: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
                       _getDisplayText(),
                       style: Theme.of(context).textTheme.headlineLarge,
+                      textAlign: TextAlign.right,
                     ),
                   ],
                 ),
               ),
             ),
-            Expanded(
-              flex: 2,
-              child: Row(
-                children: [
-                  Expanded(flex: 3, child: _buildCalculatorGrid()),
-                  Expanded(flex: 1, child: _buildDuaLipaButtons()),
-                ],
-              ),
-            ),
+            _buildCalculatorGrid(),
+            _buildDuaLipaButtons(),
           ],
         ),
       ),
@@ -268,16 +263,15 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
     ];
 
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: buttons
           .map(
-            (row) => Expanded(
-              child: Row(
-                children: row
-                    .map(
-                      (label) => Expanded(child: _buildCalculatorButton(label)),
-                    )
-                    .toList(),
-              ),
+            (row) => Row(
+              children: row
+                  .map(
+                    (label) => Expanded(child: _buildCalculatorButton(label)),
+                  )
+                  .toList(),
             ),
           )
           .toList(),
@@ -285,22 +279,19 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
   }
 
   Widget _buildCalculatorButton(String label) {
-    return Padding(
-      padding: const EdgeInsets.all(4.0),
-      child: SizedBox(
-        height: 80,
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF093244),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(18),
-            ),
+    return SizedBox(
+      height: 90,
+      child: TextButton(
+        style: TextButton.styleFrom(
+          backgroundColor: Colors.grey.shade800,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(0)),
           ),
-          onPressed: () => _onButtonPressed(label),
-          child: Text(
-            label,
-            style: TextStyle(fontSize: 28, color: Colors.grey.shade300),
-          ),
+        ),
+        onPressed: () => _onButtonPressed(label),
+        child: Text(
+          label,
+          style: TextStyle(fontSize: 28, color: Colors.grey.shade300),
         ),
       ),
     );
@@ -314,42 +305,28 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       "Four": "https://youtu.be/uZ5RcAqYym0?t=81", // Happy 4 You
     };
 
-    return SingleChildScrollView(
-      child: Column(
-        children: duaButtons.entries
-            .map(
-              (entry) => Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 2.0,
-                  vertical: 2.0,
-                ),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey.shade300,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                    ),
-                    onPressed: () => openVideo(entry.value),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 12.0),
-                      child: Text(
-                        entry.key,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF093244),
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
+    return Row(
+      children: duaButtons.entries.map((entry) {
+        return Expanded(
+          child: SizedBox(
+            height: 60,
+            child: TextButton(
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.grey.shade300,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(0)),
                 ),
               ),
-            )
-            .toList(),
-      ),
+              onPressed: () => openVideo(entry.value),
+              child: Text(
+                entry.key,
+                style: const TextStyle(fontSize: 14, color: Color(0xFF093244)),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 }
