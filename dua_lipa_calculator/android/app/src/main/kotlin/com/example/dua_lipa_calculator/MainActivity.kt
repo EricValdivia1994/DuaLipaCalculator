@@ -1,4 +1,4 @@
-package com.example.dua_lipa_calculator
+package com.whitelot.dua_lipa_calculator
 
 import io.flutter.embedding.android.FlutterActivity
 
