@@ -27,12 +27,12 @@ final Map<String, int> keySoundDelay = {
   "sounds/1.m4a": 600,
   "sounds/2.m4a": 900,
   "sounds/3.m4a": 900,
-  "sounds/4.m4a": 800,
+  "sounds/4.m4a": 700,
   "sounds/5.m4a": 800,
   "sounds/6.m4a": 1100,
   "sounds/7.m4a": 1100,
   "sounds/8.m4a": 700,
-  "sounds/9.m4a": 1000,
+  "sounds/9.m4a": 900,
   "sounds/done.m4a": 800,
 };
 
@@ -53,7 +53,7 @@ class DuaLipaCalculator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: "Dua Lipa Calculator",
+      title: "Calcu-Lipa",
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         scaffoldBackgroundColor: Colors.black,
@@ -199,7 +199,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       } else {
         res = num1 - num2;
       }
-      playSoundInQueue("done");
+      interruptAndPlay("done"); // Interrupt all sounds and play final sound.
       setState(() {
         _result = res.toString();
         _isResultShown = true;
@@ -222,7 +222,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
           children: [
             const SizedBox(height: 20),
             Text(
-              "Dua Lipa Calculator",
+              "Calcu-Lipa",
               style: TextStyle(
                 fontSize: 32,
                 fontWeight: FontWeight.bold,
