@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 final Map<String, String> duaVideos = {
   "0": "https://youtu.be/2n7K0y1D5Rg?t=32", // Future Nostalgia
@@ -68,79 +69,133 @@ class CalculatorScreen extends StatefulWidget {
 }
 
 class _CalculatorScreenState extends State<CalculatorScreen> {
-  String expression = "";
-  String result = "";
+  String _firstNumber = '';
+  String _operator = '';
+  String _secondNumber = '';
+  String _result = '';
+  bool _isResultShown = false;
+  // Audio config variables.
+  final _player = AudioPlayer();
+  final List<String> _playbackQueue = [];
+  bool _isPlaying = false;
 
-  void onButtonPress(String value) async {
-    if (duaVideos.containsKey(value)) {
-      await openVideo(duaVideos[value]!);
+  @override
+  void initState() {
+    super.initState();
+
+    // Set up the listener for when an audio file finishes playing.
+    _player.onPlayerComplete.listen((event) {
+      // When one sound finishes, try to play the next one.
+      _playNextInQueue();
+    });
+  }
+
+  Future<void> _playNextInQueue() async {
+    // Check if the queue is empty
+    if (_playbackQueue.isEmpty) {
+      _isPlaying = false;
+      print('Queue finished.');
+      return;
     }
 
+    // 1. Mark as playing and get the next file
+    _isPlaying = true;
+    final nextFileName = _playbackQueue.removeAt(0);
+
+    print('Playing: $nextFileName');
+
+    // 2. Determine the Source
+    final source = AssetSource(nextFileName);
+
+    // 3. Start the playback
+    // Note: We don't use 'await' here because we don't want to block
+    // the UI thread while the audio is playing.
+    _player.play(source);
+  }
+
+  void playSoundInQueue(String digit) async {
+    if (digit == '+' || digit == '-') return;
+    _playbackQueue.add('sounds/$digit.m4a');
+    if (!_isPlaying) {
+      _playNextInQueue();
+    }
+    // await _player.play(AssetSource('sounds/$digit.m4a')); // Basic play
+  }
+
+  void interruptAndPlay(String newAudioName) async {
+    // 1. Clear the queue (so nothing plays after the new sound)
+    _playbackQueue.clear();
+
+    // 2. Stop any current sound (this resets the player state)
+    await _player.stop();
+
+    // 3. Set the state flag to ensure _playNextInQueue doesn't run unexpectedly
+    _isPlaying = false;
+
+    // 4. Play the new sound immediately
+    await _player.play(AssetSource('sounds/$newAudioName.m4a'));
+
+    // Note: We don't update the queue or _isPlaying here because this is an interrupt,
+    // and the onPlayerComplete listener will handle the transition back to idle
+    // after the interrupt sound is done.
+    print('Interrupted sequence to play: $newAudioName.m4a');
+  }
+
+  void _onButtonPressed(String value) {
     setState(() {
-      if (value == "C") {
-        expression = "";
-        result = "";
-      } else if (value == "=") {
-        try {
-          result = _calculate(expression).toString();
-        } catch (e) {
-          result = "Error";
+      playSoundInQueue(value);
+
+      if (_isResultShown) {
+        _firstNumber = '';
+        _operator = '';
+        _secondNumber = '';
+        _result = '';
+        _isResultShown = false;
+      }
+
+      if (int.tryParse(value) != null) {
+        if (_operator.isEmpty) {
+          _firstNumber = value;
+        } else {
+          _secondNumber = value;
+          _calculate();
         }
-      } else {
-        expression += value;
+      } else if (value == '+' || value == '-') {
+        if (_firstNumber.isNotEmpty) {
+          _operator = value;
+        }
       }
     });
   }
 
-  num _calculate(String exp) {
-    // Evaluación sencilla:
-    // Nota: Para algo más robusto puedes usar 'math_expressions'.
-    final sanitized = exp.replaceAll("×", "*").replaceAll("÷", "/");
-    return double.parse(
-      Function.apply((String e) => double.parse(evalSimple(e)), [
-        sanitized,
-      ]).toString(),
-    );
+  void _calculate() {
+    if (_firstNumber.isNotEmpty &&
+        _operator.isNotEmpty &&
+        _secondNumber.isNotEmpty) {
+      final num1 = int.parse(_firstNumber);
+      final num2 = int.parse(_secondNumber);
+      int res;
+      if (_operator == '+') {
+        res = num1 + num2;
+      } else {
+        res = num1 - num2;
+      }
+      setState(() {
+        _result = res.toString();
+        _isResultShown = true;
+      });
+    }
   }
 
-  // Evaluador súper simple (solo + - * / en orden).
-  String evalSimple(String exp) {
-    try {
-      return exp.isEmpty
-          ? "0"
-          : exp.contains('+') ||
-                exp.contains('-') ||
-                exp.contains('*') ||
-                exp.contains('/')
-          ? (double.parse(exp.replaceAll('*', '×'))).toString()
-          : exp;
-    } catch (_) {
-      return "0";
+  String _getDisplayText() {
+    if (_isResultShown) {
+      return '$_firstNumber $_operator $_secondNumber = $_result';
     }
+    return '$_firstNumber $_operator $_secondNumber';
   }
 
   @override
   Widget build(BuildContext context) {
-    final buttons = [
-      "7",
-      "8",
-      "9",
-      "÷",
-      "4",
-      "5",
-      "6",
-      "×",
-      "1",
-      "2",
-      "3",
-      "-",
-      "0",
-      ".",
-      "C",
-      "+",
-      "=",
-    ];
-
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -162,58 +217,118 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      expression,
-                      style: Theme.of(context).textTheme.bodyLarge,
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      result,
+                      _getDisplayText(),
                       style: Theme.of(context).textTheme.headlineLarge,
                     ),
                   ],
                 ),
               ),
             ),
-
-            // Botones
-            GridView.builder(
-              shrinkWrap: true,
-              itemCount: buttons.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 4,
-                childAspectRatio: 1.2,
+            Expanded(
+              flex: 2,
+              child: Row(
+                children: [
+                  Expanded(flex: 3, child: _buildCalculatorGrid()),
+                  Expanded(flex: 1, child: _buildDuaLipaButtons()),
+                ],
               ),
-              itemBuilder: (context, index) {
-                final label = buttons[index];
-                final isAction = ["÷", "×", "-", "+", "="].contains(label);
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-                return Padding(
-                  padding: const EdgeInsets.all(8.0),
+  Widget _buildCalculatorGrid() {
+    final buttons = [
+      ['1', '2', '3'],
+      ['4', '5', '6'],
+      ['7', '8', '9'],
+      ['-', '0', '+'],
+    ];
+
+    return Column(
+      children: buttons
+          .map(
+            (row) => Expanded(
+              child: Row(
+                children: row
+                    .map(
+                      (label) => Expanded(child: _buildCalculatorButton(label)),
+                    )
+                    .toList(),
+              ),
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  Widget _buildCalculatorButton(String label) {
+    return Padding(
+      padding: const EdgeInsets.all(4.0),
+      child: SizedBox(
+        height: 80,
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF093244),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+            ),
+          ),
+          onPressed: () => _onButtonPressed(label),
+          child: Text(
+            label,
+            style: TextStyle(fontSize: 28, color: Colors.grey.shade300),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDuaLipaButtons() {
+    final duaButtons = {
+      "One": "https://youtu.be/-rey3m8SWQI?t=76", // Be The 1
+      "Two": "https://youtu.be/cDAHXorVQbc?t=74", // Room For 2
+      "Three": "https://youtu.be/k2qgadSvNyU?t=59", // New Rules
+      "Four": "https://youtu.be/uZ5RcAqYym0?t=81", // Happy 4 You
+    };
+
+    return SingleChildScrollView(
+      child: Column(
+        children: duaButtons.entries
+            .map(
+              (entry) => Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 2.0,
+                  vertical: 2.0,
+                ),
+                child: SizedBox(
+                  width: double.infinity,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: isAction
-                          ? Color(0xFF093244)
-                          : Colors.grey.shade300,
+                      backgroundColor: Colors.grey.shade300,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(18),
                       ),
                     ),
-                    onPressed: () => onButtonPress(label),
-                    child: Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: 24,
-                        color: isAction
-                            ? Colors.grey.shade300
-                            : Color(0xFF093244),
+                    onPressed: () => openVideo(entry.value),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12.0),
+                      child: Text(
+                        entry.key,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF093244),
+                        ),
+                        textAlign: TextAlign.center,
                       ),
                     ),
                   ),
-                );
-              },
-            ),
-          ],
-        ),
+                ),
+              ),
+            )
+            .toList(),
       ),
     );
   }
